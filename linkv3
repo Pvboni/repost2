@@ -3,13 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Links</title>
+    <title>Gerenciador de Links</title>
+    <style>
+        /* Seus estilos CSS aqui */
+    </style>
 </head>
 <body>
-    <h1>Minha Lista de Links</h1>
-    <ul>
-        <li><a href="www.globo.com">Link 1</a></li>
-<li><a href="www.uol.com.br">Link 2</a></li>
-    </ul>
+    <header>
+        <h1>Gerenciador de Links</h1>
+    </header>
+    <main>
+        <input type="text" id="linkInput" placeholder="Insira o link">
+        <button onclick="adicionarLink()">Adicionar Link</button>
+        <ul id="linkList">
+            <!-- Lista de links será preenchida dinamicamente -->
+        </ul>
+        <button onclick="carregarLinks()">Carregar Links</button>
+        <button onclick="salvarLinks()">Salvar Links</button>
+    </main>
+
+    <script>
+        const token = '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';
+        const repositoryName = 'repost2';
+        const apiUrl = `https://api.github.com/repos/${repositoryName}/contents/links.json`;
+
+        let links = [];
+
+        // Função para carregar links do arquivo links.json no GitHub
+        function carregarLinks() {
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `token ${token}`,
+                },
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else if (response.status === 404) {
+                    console.log('Arquivo links.json não encontrado. Criando um novo...');
+                    return criarArquivoLinks();
+                } else {
+                    throw new Error('Erro ao carregar os links:' + response.statusText);
+                }
+            })
+            .then(data => {
+                if (data && data.content) {
+                    const decodedContent = atob(data.content); // Decodifica o conteúdo em Base64
+                    links = JSON.parse(decodedContent); // Converte o conteúdo de JSON para objeto JavaScript
+                    atualizarLista();
+                } else {
+                    console.log('Nenhum conteúdo encontrado no arquivo links.json.');
+                }
+            })
+            .catch(error => console.error('Erro ao carregar os links:', error));
+        }
+
+        // Função para criar o arquivo links.json no GitHub
+        function criarArquivoLinks() {
+            const initialContent = '[]'; // Conteúdo inicial vazio como um array JSON
+            const encodedContent = btoa(initialContent); // Codifica o conteúdo em Base64
+
+            return fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: 'Criar links.json',
+                    content: encodedContent,
+                }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Arquivo links.json criado com sucesso!');
+                    return response.json();
+                } else {
+                    throw new Error('Erro ao criar o arquivo links.json:' + response.statusText);
+                }
+            })
+            .catch(error => console.error('Erro ao criar o arquivo links.json:', error));
+        }
+
+        // Função para adicionar link à lista
+        function adicionarLink() {
+            const linkInput = document.getElementById("linkInput");
+            let link = linkInput.value.trim();
+            if (!link.startsWith("https://") && !link.startsWith("http://")) {
+                link = "https://" + link;
+            }
+            if (link !== "") {
+                links.push(link);
+                atualizarLista();
+                linkInput.value = "";
+            }
+        }
+
+        // Função para remover link da lista
+        function removerLink(index) {
+            links.splice(index, 1);
+            atualizarLista();
+        }
+
+        // Função para atualizar a lista de links na interface
+        function atualizarLista() {
+            const linkList = document.getElementById("linkList");
+            linkList.innerHTML = "";
+            links.forEach((link, index) => {
+                const listItem = document.createElement("li");
+                const removeButton = document.createElement("button");
+                removeButton.textContent = "Remover";
+                removeButton.onclick = () => removerLink(index);
+                listItem.appendChild(removeButton);
+                const linkElement = document.createElement("a");
+                linkElement.href = link;
+                linkElement.textContent = link;
+                listItem.appendChild(linkElement);
+                linkList.appendChild(listItem);
+            });
+        }
+
+        // Função para salvar links no arquivo links.json no GitHub
+        function salvarLinks() {
+            const encodedContent = btoa(JSON.stringify(links)); // Converte os links em JSON e codifica o conteúdo em Base64
+
+            fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: 'Atualizar links.json',
+                    content: encodedContent,
+                }),
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Links salvos com sucesso!');
+                } else {
+                    console.error('Erro ao salvar os links:', response.statusText);
+                }
+            })
+            .catch(error => console.error('Erro ao salvar os links:', error));
+        }
+
+        // Carregar os links ao iniciar o aplicativo
+        carregarLinks();
+    </script>
 </body>
 </html>
